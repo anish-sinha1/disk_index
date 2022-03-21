@@ -1,11 +1,9 @@
 #ifndef B_TREE_FSUTIL_H
 #define B_TREE_FSUTIL_H
 
-struct Song;
+#include "common.h"
 
-enum IO_STAT {
-    WRITE_SUCCESS = 1, READ_SUCCESS = 2, WRITE_FAIL = 3, READ_FAIL = 4
-};
+struct Song;
 
 enum IO_STAT write_record(struct Song *);
 

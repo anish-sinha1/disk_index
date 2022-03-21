@@ -1,38 +1,27 @@
 #include <cslice.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 
 #include "common.h"
 
-struct Song {
-    char title[50];
-    char artist[50];
-    int likes;
-};
-
-struct Song *song(const char *title, const char *artist, int likes) {
+struct Song *song(char *title, char *artist, char *lyrics, double length, int likes) {
     struct Song *s = malloc(sizeof(struct Song));
-    strncpy(s->title, title, 50);
-    strncpy(s->artist, artist, 50);
+    strncpy(s->title, title, 46);
+    strncpy(s->artist, artist, 46);
+    strncpy(s->lyrics, lyrics, 688);
     s->likes = likes;
+    s->length = length;
     return s;
 }
 
-int compare_songs(struct Song *first, struct Song *second) {
-    return strcmp(first->title, second->title);
-}
-
-// the "table" we write to is just one large binary file. there's no "pages" or anything special. literally, structs
-// are just appended to the end of the file. this isn't super efficient since the whole table has to be read into
-// memory, but we don't care about that shit. we just want to test a b+tree index. When I make a Lehman and Yao Index, I
-// might put more effort into this part
+// write a song to the binary data file
 enum F_STAT write_song(struct Song *s) {
-    if (!s) return WRITE_ERROR;
-    int fd = open(SONG_TABLE_FILE, O_RDWR);
+    if (!s) return WRITE_FAIL;
+    int fd = open(DATA_PATH, O_RDWR);
     {
         struct stat buf;
         fstat(fd, &buf);
@@ -42,29 +31,56 @@ enum F_STAT write_song(struct Song *s) {
     return WRITE_SUCCESS;
 }
 
-struct Song *read_song(int pos) {
-    int fd = open(SONG_TABLE_FILE, O_RDONLY);
-    struct Song *s = malloc(sizeof(struct Song));
+// read a song from a binary data file
+enum F_STAT read_song(int pos, struct Song *s) {
+    if (pos < 0) return READ_FAIL;
+    int fd = open(DATA_PATH, O_RDONLY);
     {
         struct stat buf;
         fstat(fd, &buf);
-        // there's probably a more user-friendly way to do this but honestly fuck that lol. here's a null pointer. it's
-        // your own fault for passing in stupid input.
-        if (pos * sizeof(struct Song) > buf.st_size || pos < 0) return NULL;
+        if (pos * sizeof(struct Song) > buf.st_size) return READ_FAIL;
         pread(fd, s, sizeof(struct Song), (off_t) sizeof(struct Song) * pos);
     }
     close(fd);
-    return s;
-}
-
-void clear_songs() {
-    truncate(SONG_TABLE_FILE, 0);
+    return READ_SUCCESS;
 }
 
 void serialize_song(struct Song *s) {
     printf("{\n");
     printf("\ttitle: %s\n", s->title);
     printf("\tartist: %s\n", s->artist);
+    printf("\tlyrics: %s\n", s->lyrics);
     printf("\tlikes: %d\n", s->likes);
+    printf("\tlength: %f\n", s->length);
     printf("}\n");
+}
+
+Slice *read_block(int page) {
+    if (page < 0) return slice(1);
+    int fd = open(DATA_PATH, O_RDONLY);
+    Slice *memory_block = slice(10);
+    {
+        struct stat buf;
+        fstat(fd, &buf);
+        if (buf.st_size < page * PAGE_SIZE) return slice(1);
+        int record_count = (int) ((buf.st_size - (page * PAGE_SIZE)) / sizeof(struct Song));
+        char block[PAGE_SIZE];
+        pread(fd, block, PAGE_SIZE, page * PAGE_SIZE);
+        for (int i = 0; i < record_count; i++) {
+            struct Song *s = malloc(sizeof(struct Song));
+            memcpy(s, block + sizeof(struct Song) * i, sizeof(struct Song));
+            push(memory_block, s);
+        }
+    }
+    close(fd);
+    return memory_block;
+}
+
+void clear_data() {
+    truncate(DATA_PATH, 0);
+}
+
+// for us a block consists of 100 records exactly
+void test() {
+    printf("%lu\n", sizeof(struct Song));
 }
