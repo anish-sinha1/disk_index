@@ -18,6 +18,10 @@ struct Song *song(char *title, char *artist, char *lyrics, double length, int li
     return s;
 }
 
+int compare_song(const void *first, const void *second) {
+    return -strcmp(((struct Song *) first)->title, ((struct Song *) second)->title);
+}
+
 // write a song to the binary data file
 enum F_STAT write_song(struct Song *s) {
     if (!s) return WRITE_FAIL;
@@ -55,6 +59,7 @@ void serialize_song(struct Song *s) {
     printf("}\n");
 }
 
+// reads a block of data into memory and organizes it into a nice, processable slice
 Slice *read_block(int page) {
     if (page < 0) return slice(1);
     int fd = open(DATA_PATH, O_RDONLY);
@@ -78,9 +83,4 @@ Slice *read_block(int page) {
 
 void clear_data() {
     truncate(DATA_PATH, 0);
-}
-
-// for us a block consists of 100 records exactly
-void test() {
-    printf("%lu\n", sizeof(struct Song));
 }
