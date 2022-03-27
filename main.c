@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <cslice.h>
 #include "song/song.h"
-#include "common.h"
 
 int main() {
     clear_data();
-    fmt_i
+    clear_idx();
+    fmt_table("songs");
     struct Song *stairway_to_heaven = song("Stairway to Heaven", "Led Zeppelin", "Stairway to Heaven lyrics here!!",
                                            483, 740000);
 
@@ -46,10 +46,7 @@ int main() {
     write_song(somebody_else);
     write_song(tears_in_heaven);
 
-    Slice *test = read_block(1);
-    printf("%d\n", len(test));
-    print(test, (void (*)(const void *)) serialize_song);
-
+    gen_idx();
 
     return 0;
 }
